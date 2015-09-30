@@ -85,6 +85,7 @@ class WebsiteParser
     // metatags are normaly this form: <meta name="NAME" content="CONTENT" />
     // Facebook use property "instead" of "name", see here : http://ogp.me/
     private $metatags_expression = "/<meta[^>]+(?:name|property)=\"([^\"]*)\"[^>]+content=\"([^\"]*)\"[^>]*>/";
+    private $metatags_expression_alt = "/<meta[^>]+content=\"([^\"]*)\"[^>]+(?:name|property)=\"([^\"]*)\"[^>]*>/";
 
     /**
      * cUrl option
@@ -95,7 +96,7 @@ class WebsiteParser
         CURLOPT_HEADER => false, // don't return headers
         CURLOPT_FOLLOWLOCATION => true, // follow redirects
         CURLOPT_ENCODING => "", // handle all encodings
-        CURLOPT_USERAGENT => "spider", // who am i
+        CURLOPT_USERAGENT => "SimpleScraper", // who am i
         CURLOPT_AUTOREFERER => true, // set referrer on redirect
         CURLOPT_CONNECTTIMEOUT => 60, // timeout on connect
         CURLOPT_TIMEOUT => 120, // timeout on response
@@ -251,6 +252,7 @@ class WebsiteParser
     public function getMetaTags($grab = false)
     {
         $metatags = array();
+        $twisted = false;
 
         if ($grab)
             $this->grabContent();
@@ -263,6 +265,28 @@ class WebsiteParser
                 foreach ($match_tags[2] as $key => $match_tag) {
 
                     $key = trim($match_tags[1][$key]);
+                    $match_tag = trim($match_tag);
+
+                    if($twisted != true && strpos($match_tag,'og:') !== false)
+                    {
+                        $twisted = true;
+                    }
+
+                    if ($match_tag) {
+                        $metatags[] = array($key, $match_tag);
+                    }
+                }
+            }
+
+            if (sizeof($metatags) == 0)
+            {
+                $metatags = array();
+                $match_tags = null;
+                preg_match_all($this->metatags_expression_alt, $this->content, $match_tags);
+                
+                foreach ($match_tags[1] as $key => $match_tag) {
+
+                    $key = trim($match_tags[2][$key]);
                     $match_tag = trim($match_tag);
 
                     if ($match_tag) {
